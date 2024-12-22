@@ -1,5 +1,6 @@
 import numpy as np
 import random
+import copy
 
 def import_prova():
     print("Pass")
@@ -29,7 +30,7 @@ def collect_nodes(n, nodes):
     collect_nodes(n.left, nodes)
     collect_nodes(n.right, nodes)
 
-def modify_random_node(node, feature_count, max_constant=10):
+def mutation(node, feature_count, max_constant=10):
     """
     Randomly modifies a node's value or feature_index in the tree.
     
@@ -59,7 +60,7 @@ def modify_random_node(node, feature_count, max_constant=10):
         else:
             # Assign constant value to feature node
             target_node.feature_index = None
-            target_node.value = random.uniform(-max_constant, max_constant) #TODO: check the initiliazation of the constant
+            target_node.value = np.random.normal(0,1,1)
     else:
     # Modify the operator or constant
         if target_node.value in operators:
@@ -70,12 +71,51 @@ def modify_random_node(node, feature_count, max_constant=10):
         else: # If the node is a constant, assign a new constant value
             if random.random() < 0.5:
                 # Replace the constant value with constant value
-                target_node.value = random.uniform(-max_constant, max_constant) #TODO: check the initiliazation of the constant
+                target_node.value = np.random.normal(0,1,1)
             else:
                 # Replace the constant value with a feature
                 target_node.value = None
                 target_node.feature_index = random.randint(0, feature_count - 1)
     return True
 
-def crossover():
-    pass
+
+def crossover(parent1, parent2):
+    """
+    Perform crossover between two parents.
+    
+    Args:
+        parent1 (Node): First parent.
+        parent2 (Node): Second parent.
+        
+    Returns:
+        child (Node): Child node.
+    """
+    # Collect all nodes in the trees
+    nodes1 = []
+    collect_nodes(parent1, nodes1)
+    nodes2 = []
+    collect_nodes(parent2, nodes2)
+    
+    # Randomly pick a node from each parent
+    if not nodes1 or not nodes2:
+        return None
+    target_node1 = random.choice(nodes1)
+    target_node2 = random.choice(nodes2)
+
+    # Copy the target node from parent1
+    copy_target_node1 = copy.deepcopy(target_node1)
+
+    
+    # Replace the target node with the target node from parent2
+    target_node1.value = target_node2.value
+    target_node1.feature_index = target_node2.feature_index
+    target_node1.left = target_node2.left
+    target_node1.right = target_node2.right
+
+    # Replace the target node with the target node from parent1
+    target_node2.value = copy_target_node1.value
+    target_node2.feature_index = copy_target_node1.feature_index
+    target_node2.left = copy_target_node1.left
+    target_node2.right = copy_target_node1.right
+    
+    return True
