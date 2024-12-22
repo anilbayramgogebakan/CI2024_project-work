@@ -1,6 +1,6 @@
 import numpy as np
 import random
-import math
+import utils
 operators=[np.add, np.subtract, np.multiply, np.sin, np.cos, np.exp]
 one_arg_op=[np.sin, np.cos, np.exp]
 
@@ -88,7 +88,24 @@ def create_population(num_peop,depth,num_features):
         population.append(baby)
     return population
 
-def cost(genome,x, y):
+def cost(genome,x,y):
     predictions = np.array([genome.evaluate(x[:, i]) for i in range(x.shape[1])])
     mse = np.mean((predictions - y) ** 2)
     return mse
+
+def cost_population(population, x, y):
+    costs = np.array([cost(population[j],x,y) for j in range(len(population))])
+    return costs
+
+def migration(population_1,population_2,num_peop,x,y):
+    costs_1 = cost_population(population_1,x,y)
+    costs_2 = cost_population(population_2,x,y)
+    best_1, worst_1 = utils.tournament_selection(costs_1,num_peop)
+    best_2, worst_2 = utils.tournament_selection(costs_2,num_peop)
+    elements_1 = [population_1[i] for i in best_1]
+    elements_2 = [population_2[i] for i in best_2]
+    for i, idx in enumerate(best_1):
+        population_1[idx] = elements_2[i]
+    for i, idx in enumerate(best_2):
+        population_2[idx] = elements_1[i]
+    return population_1,population_2
