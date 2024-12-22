@@ -34,7 +34,7 @@ def collect_nodes(n, nodes):
     collect_nodes(n.left, nodes)
     collect_nodes(n.right, nodes)
 
-def mutation(node, feature_count):
+def mutation(individual, feature_count):
     """
     Randomly modifies a node's value or feature_index in the tree.
     
@@ -46,7 +46,7 @@ def mutation(node, feature_count):
     Returns:
         bool: True if a node was modified, False otherwise.
     """
-
+    node = copy.deepcopy(individual)
     nodes = []
     collect_nodes(node, nodes)
 
@@ -80,7 +80,7 @@ def mutation(node, feature_count):
                 # Replace the constant value with a feature
                 target_node.value = None
                 target_node.feature_index = random.randint(0, feature_count - 1)
-    return True
+    return node
 
 
 def crossover(parent1, parent2):
