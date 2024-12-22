@@ -2,6 +2,9 @@ import numpy as np
 import random
 import copy
 
+operators=[np.add, np.subtract, np.multiply, np.sin, np.cos, np.exp]
+one_arg_op=[np.sin, np.cos, np.exp]
+
 def import_prova():
     print("Pass")
 
@@ -30,7 +33,7 @@ def collect_nodes(n, nodes):
     collect_nodes(n.left, nodes)
     collect_nodes(n.right, nodes)
 
-def mutation(node, feature_count, max_constant=10):
+def mutation(node, feature_count):
     """
     Randomly modifies a node's value or feature_index in the tree.
     
@@ -88,13 +91,18 @@ def crossover(parent1, parent2):
         parent2 (Node): Second parent.
         
     Returns:
-        child (Node): Child node.
+        child1 (Node): First child.
+        child2 (Node): Second child.
     """
+    # Copy parent to create new children
+    child1 = copy.deepcopy(parent1)
+    child2 = copy.deepcopy(parent2)
+
     # Collect all nodes in the trees
     nodes1 = []
-    collect_nodes(parent1, nodes1)
+    collect_nodes(child1, nodes1)
     nodes2 = []
-    collect_nodes(parent2, nodes2)
+    collect_nodes(child2, nodes2)
     
     # Randomly pick a node from each parent
     if not nodes1 or not nodes2:
@@ -105,7 +113,6 @@ def crossover(parent1, parent2):
     # Copy the target node from parent1
     copy_target_node1 = copy.deepcopy(target_node1)
 
-    
     # Replace the target node with the target node from parent2
     target_node1.value = target_node2.value
     target_node1.feature_index = target_node2.feature_index
@@ -118,4 +125,4 @@ def crossover(parent1, parent2):
     target_node2.left = copy_target_node1.left
     target_node2.right = copy_target_node1.right
     
-    return True
+    return child1, child2

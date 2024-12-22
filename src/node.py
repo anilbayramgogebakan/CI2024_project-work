@@ -1,6 +1,6 @@
 import numpy as np
 import random
-import utils
+
 operators=[np.add, np.subtract, np.multiply, np.sin, np.cos, np.exp]
 one_arg_op=[np.sin, np.cos, np.exp]
 
