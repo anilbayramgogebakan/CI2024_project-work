@@ -128,27 +128,27 @@ def crossover(parent1, parent2):
     
     return child1, child2
 
-def simplify(population, x, y):
-    """
-    Simply population by removing overflowed individuals.
+# def simplify(population, x, y):
+#     """
+#     Simply population by removing overflowed individuals.
 
-    Args:
-        population (list): List of individuals.
-        x (array-like): Input data.
+#     Args:
+#         population (list): List of individuals.
+#         x (array-like): Input data.
 
-    Returns:
-        simplified_population (list): List of simplified individuals.
-    """
-    simplified_population = []
-    for individual in population:
-        with warnings.catch_warnings(record=True)as w:
-            warnings.simplefilter("always")
-            cost(individual, x, y)
-            if len(w) == 0:
-                simplified_population.append(individual)
-            else:
-                pass
-    return simplified_population
+#     Returns:
+#         simplified_population (list): List of simplified individuals.
+#     """
+#     simplified_population = []
+#     for individual in population:
+#         with warnings.catch_warnings(record=True)as w:
+#             warnings.simplefilter("always")
+#             cost(individual, x, y)
+#             if len(w) == 0:
+#                 simplified_population.append(individual)
+#             else:
+#                 pass
+#     return simplified_population
 
 def is_operator(val):
         return val in operators
@@ -239,15 +239,31 @@ def cost(genome,x,y):
     mse = np.mean((predictions - y) ** 2)
     return mse
 
+# def cost_population(population, x, y):
+#     costs = np.array([cost(population[j],x,y) for j in range(len(population))])
+#     return costs
+
 def cost_population(population, x, y):
-    costs = np.array([cost(population[j],x,y) for j in range(len(population))])
-    return costs
+    cost_list = []
+    removed_el = []
+    for ind in range(len(population)):
+        with warnings.catch_warnings(record=True)as w:
+            warnings.simplefilter("always")
+            ind_cost = cost(population[ind], x, y)
+            if len(w) == 0:
+                cost_list.append(ind_cost)
+            else:
+                removed_el.append(ind)
+    for ind in sorted(removed_el, reverse=True):
+        del population[ind]
+            
+    return np.asarray(cost_list)
 
 def migration(population_1,population_2,num_peop,x,y):
     costs_1 = cost_population(population_1,x,y)
     costs_2 = cost_population(population_2,x,y)
-    best_1, worst_1 = utils.tournament_selection(costs_1,num_peop)
-    best_2, worst_2 = utils.tournament_selection(costs_2,num_peop)
+    best_1, worst_1 = tournament_selection(costs_1,num_peop)
+    best_2, worst_2 = tournament_selection(costs_2,num_peop)
     elements_1 = [population_1[i] for i in best_1]
     elements_2 = [population_2[i] for i in best_2]
     for i, idx in enumerate(best_1):
