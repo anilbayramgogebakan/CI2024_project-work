@@ -2,6 +2,8 @@ import numpy as np
 import random
 import copy
 import warnings
+from dataclasses import dataclass
+from MyNode import Node
 
 operators=[np.add, np.subtract, np.multiply, np.sin, np.cos, np.exp]
 one_arg_op=[np.sin, np.cos, np.exp]
@@ -9,7 +11,7 @@ one_arg_op=[np.sin, np.cos, np.exp]
 def import_prova():
     print("Pass")
 
-def tournament_selection(fitness, n):
+def best_worst_subset(fitness, n):
     """
     Perform tournament selection
     
@@ -25,6 +27,36 @@ def tournament_selection(fitness, n):
     best_n = sorted_indices[:n]
     worst_n = sorted_indices[-n:][::-1]
     return best_n, worst_n
+
+def tournament_selection(arr, n, k, sorted=False):
+    """
+    Select k winners from the array by repeatedly comparing random n elements.
+    
+    Parameters:
+    - arr (np.ndarray): The input array.
+    - n (int): Number of elements to randomly select for each comparison.
+    - k (int): Number of winners to select.
+    
+    Returns:
+    - np.ndarray: Array of the k largest winners.
+    """
+    
+    # Initialize list of indices
+    indices = list(range(len(arr)))
+    
+    while len(indices) > k:
+        # Randomly select `n` indices
+        selected_indices = np.random.choice(indices, n, replace=False)
+        
+        # Find the index of the maximum among the selected
+        max_idx = selected_indices[np.argmax(arr[selected_indices])]
+        
+        # Remove all selected indices except the winner
+        for idx in selected_indices:
+            if idx != max_idx:
+                indices.remove(idx)
+
+    return indices
 
 # Collect all nodes in the tree
 def collect_nodes(n, nodes):
@@ -149,83 +181,6 @@ def crossover(parent1, parent2):
 #             else:
 #                 pass
 #     return simplified_population
-
-def is_operator(val):
-        return val in operators
-
-class Node:
-    op_list = {
-        np.add: '+',
-        np.subtract: '-',
-        np.multiply: '*',
-        np.sin: 'sin',
-        np.cos: 'cos',
-        np.exp: 'exp',  
-    }
-    def __init__(self, value=None, feature_index=None, left=None, right=None):
-        self.value = value 
-        self.feature_index = feature_index
-        self.left = left
-        self.right = right
-
-    def evaluate(self,x=None):
-        # first check if it is an operator 
-        # if not proceed
-        
-        if not is_operator(self.value):
-            #print("index",self.feature_index)
-            if self.feature_index!= None:
-                #print("ben inputun indexiyim")
-                return x[self.feature_index]
-            else:
-                #print("ben bir sayıyım")
-                return self.value
-        # if it is an operator
-        if self.value in one_arg_op:
-            operand_value = self.left.evaluate(x)
-            #print("tek",operand_value)
-            return self.value(operand_value)
-        
-        left_value = self.left.evaluate(x)
-        right_value = self.right.evaluate(x)
-        #print(left_value)
-        #print(right_value)
-        return self.value(left_value, right_value)
-    def __str__(self):
-        if not is_operator(self.value):
-            if self.feature_index != None:
-                return f"x[{self.feature_index}]"
-            return str(self.value)
-
-        operator_symbol = self.op_list[self.value]
-
-        if self.value in {np.sin, np.cos, np.log, np.exp}:
-            return f"{operator_symbol}({self.left})"
-
-        return f"({self.left} {operator_symbol} {self.right})"
-    
-    def __eq__(self, other):
-        if not isinstance(other, Node):
-            return False
-        return (
-            np.array_equal(self.value, other.value) and
-            self.feature_index == other.feature_index and
-            self.left == other.left and
-            self.right == other.right
-        )
-
-    def __hash__(self):
-        def hashable(value):
-            if isinstance(value, np.ndarray):
-                return tuple(value.flatten())  # Convert array to a hashable tuple
-            return value
-
-        return hash((
-            hashable(self.value),
-            self.feature_index,
-            self.left,
-            self.right,
-        ))
 
 def random_tree(depth, num_features):
     if depth == 0:
