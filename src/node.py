@@ -1,11 +1,5 @@
 import numpy as np
-import random
 
-operators=[np.add, np.subtract, np.multiply, np.sin, np.cos, np.exp]
-one_arg_op=[np.sin, np.cos, np.exp]
-
-def is_operator(val):
-        return val in operators
 
 class Node:
     op_list = {
@@ -16,17 +10,23 @@ class Node:
         np.cos: 'cos',
         np.exp: 'exp',  
     }
+    operators=[np.add, np.subtract, np.multiply, np.sin, np.cos, np.exp]
+    one_arg_op=[np.sin, np.cos, np.exp]
+
     def __init__(self, value=None, feature_index=None, left=None, right=None):
         self.value = value 
         self.feature_index = feature_index
         self.left = left
         self.right = right
+    
+    def is_operator(self, val):
+        return val in self.operators
 
     def evaluate(self,x=None):
         # first check if it is an operator 
         # if not proceed
         
-        if not is_operator(self.value):
+        if not self.is_operator(self.value):
             #print("index",self.feature_index)
             if self.feature_index!= None:
                 #print("ben inputun indexiyim")
@@ -35,7 +35,7 @@ class Node:
                 #print("ben bir sayıyım")
                 return self.value
         # if it is an operator
-        if self.value in one_arg_op:
+        if self.value in self.one_arg_op:
             operand_value = self.left.evaluate(x)
             #print("tek",operand_value)
             return self.value(operand_value)
@@ -45,8 +45,9 @@ class Node:
         #print(left_value)
         #print(right_value)
         return self.value(left_value, right_value)
+    
     def __str__(self):
-        if not is_operator(self.value):
+        if not self.is_operator(self.value):
             if self.feature_index != None:
                 return f"x[{self.feature_index}]"
             return str(self.value)
@@ -57,55 +58,39 @@ class Node:
             return f"{operator_symbol}({self.left})"
 
         return f"({self.left} {operator_symbol} {self.right})"
+    
+    def __repr__(self):
+        if not self.is_operator(self.value):
+            if self.feature_index != None:
+                return f"x[{self.feature_index}]"
+            return str(self.value)
 
-def random_tree(depth, num_features):
-    if depth == 0:
-        if random.random() < 0.5:
-            return Node(feature_index=random.randint(0, num_features - 1))
-        else:
-            return Node(value=np.random.normal(0,1,1))
+        operator_symbol = self.op_list[self.value]
 
-    operator = random.choice(operators)
-    node = Node(value=operator)
+        if self.value in {np.sin, np.cos, np.log, np.exp}:
+            return f"{operator_symbol}({self.left})"
 
-    if operator in one_arg_op:
-        node.left = random_tree(depth - 1, num_features)
-        node.right = None
-    else:
-        node.left = random_tree(depth - 1, num_features)
-        node.right = random_tree(depth - 1, num_features)
+        return f"({self.left} {operator_symbol} {self.right})"
+    
+    def __eq__(self, other):
+        if not isinstance(other, Node):
+            return False
+        return (
+            np.array_equal(self.value, other.value) and
+            self.feature_index == other.feature_index and
+            self.left == other.left and
+            self.right == other.right
+        )
 
-    return node
+    def __hash__(self):
+        def hashable(value):
+            if isinstance(value, np.ndarray):
+                return tuple(value.flatten())  # Convert array to a hashable tuple
+            return value
 
-def create_population(num_peop,depth,num_features):
-    population = []
-    num_ones = num_peop//2
-    for i in range(num_ones):
-        baby=random_tree(1,num_features)
-        population.append(baby)
-    for i in range(num_peop-num_ones):
-        baby=random_tree(depth,num_features)
-        population.append(baby)
-    return population
-
-def cost(genome,x,y):
-    predictions = np.array([genome.evaluate(x[:, i]) for i in range(x.shape[1])])
-    mse = np.mean((predictions - y) ** 2)
-    return mse
-
-def cost_population(population, x, y):
-    costs = np.array([cost(population[j],x,y) for j in range(len(population))])
-    return costs
-
-def migration(population_1,population_2,num_peop,x,y):
-    costs_1 = cost_population(population_1,x,y)
-    costs_2 = cost_population(population_2,x,y)
-    best_1, worst_1 = utils.tournament_selection(costs_1,num_peop)
-    best_2, worst_2 = utils.tournament_selection(costs_2,num_peop)
-    elements_1 = [population_1[i] for i in best_1]
-    elements_2 = [population_2[i] for i in best_2]
-    for i, idx in enumerate(best_1):
-        population_1[idx] = elements_2[i]
-    for i, idx in enumerate(best_2):
-        population_2[idx] = elements_1[i]
-    return population_1,population_2
+        return hash((
+            hashable(self.value),
+            self.feature_index,
+            self.left,
+            self.right,
+        ))

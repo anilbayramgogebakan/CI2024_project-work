@@ -2,8 +2,8 @@ import numpy as np
 import random
 import copy
 import warnings
-from dataclasses import dataclass
-from MyNode import Node
+from src.Node import Node
+from src.Individual import Individual
 
 operators=[np.add, np.subtract, np.multiply, np.sin, np.cos, np.exp]
 one_arg_op=[np.sin, np.cos, np.exp]
@@ -11,52 +11,41 @@ one_arg_op=[np.sin, np.cos, np.exp]
 def import_prova():
     print("Pass")
 
-def best_worst_subset(fitness, n):
-    """
-    Perform tournament selection
-    
-    Args:
-        fitness (array-like): Fitness values of the population.
-        n (int): Subset size of winners and losers.
-        
-    Returns:
-        best_n (list): Indices of best n individuals.
-        worst_n (list): Indices of worst n individuals
-    """
-    sorted_indices = np.argsort(fitness)
-    best_n = sorted_indices[:n]
-    worst_n = sorted_indices[-n:][::-1]
-    return best_n, worst_n
 
-def tournament_selection(arr, n, k, sorted=False):
+def tournament_selection(population, n, k):
     """
-    Select k winners from the array by repeatedly comparing random n elements.
+    Perform tournament selection on a population of individuals.
     
     Parameters:
-    - arr (np.ndarray): The input array.
-    - n (int): Number of elements to randomly select for each comparison.
+    - population (list of Individual): The population of individuals.
+    - n (int): Number of individuals to randomly select for each comparison.
     - k (int): Number of winners to select.
-    
+
     Returns:
-    - np.ndarray: Array of the k largest winners.
+    - list of Individual: The selected individuals.
     """
-    
-    # Initialize list of indices
-    indices = list(range(len(arr)))
-    
-    while len(indices) > k:
-        # Randomly select `n` indices
+    # Ensure all individuals have their fitness calculated
+    if any(ind.fitness is None for ind in population):
+        raise ValueError("All individuals must have a fitness value assigned before tournament selection.")
+
+    # Create an index list for the population
+    indices = list(range(len(population)))
+
+    while len(indices) >= k:
+        # Randomly select `n` indices for the tournament
         selected_indices = np.random.choice(indices, n, replace=False)
         
-        # Find the index of the maximum among the selected
-        max_idx = selected_indices[np.argmax(arr[selected_indices])]
-        
-        # Remove all selected indices except the winner
+        # Find the index of the individual with the best (lowest) fitness in the selected group
+        best_idx = selected_indices[np.argmin([population[i].fitness for i in selected_indices])]
+
+        # Remove all other indices except the winner of the tournament
         for idx in selected_indices:
-            if idx != max_idx:
+            if idx != best_idx:
                 indices.remove(idx)
 
+    # Return the selected individuals
     return indices
+
 
 # Collect all nodes in the tree
 def collect_nodes(n, nodes):
@@ -78,7 +67,9 @@ def mutation(individual, feature_count):
     Returns:
         bool: True if a node was modified, False otherwise.
     """
-    node = copy.deepcopy(individual)
+
+    child = Individual(genome=copy.deepcopy(individual.genome))
+    node = child.genome
     nodes = []
     collect_nodes(node, nodes)
 
@@ -112,75 +103,50 @@ def mutation(individual, feature_count):
                 # Replace the constant value with a feature
                 target_node.value = None
                 target_node.feature_index = random.randint(0, feature_count - 1)
-    return node
+    return child
 
 
 def crossover(parent1, parent2):
     """
-    Perform crossover between two parents.
-    
-    Args:
-        parent1 (Node): First parent.
-        parent2 (Node): Second parent.
-        
-    Returns:
-        child1 (Node): First child.
-        child2 (Node): Second child.
-    """
-    # Copy parent to create new children
-    child1 = copy.deepcopy(parent1)
-    child2 = copy.deepcopy(parent2)
+    Perform crossover between two parent individuals.
 
-    # Collect all nodes in the trees
+    Args:
+        parent1 (Individual): The first parent individual.
+        parent2 (Individual): The second parent individual.
+
+    Returns:
+        tuple: Two offspring individuals (child1, child2).
+    """
+    import copy
+    # Create new children from parents
+    child1 = Individual(genome=copy.deepcopy(parent1.genome))
+    child2 = Individual(genome=copy.deepcopy(parent2.genome))
+
+    genome1 = child1.genome
+    genome2 = child2.genome
+
+    # Collect all nodes in the genomes
     nodes1 = []
-    collect_nodes(child1, nodes1)
+    collect_nodes(genome1, nodes1)
     nodes2 = []
-    collect_nodes(child2, nodes2)
-    
+    collect_nodes(genome2, nodes2)
+
     # Randomly pick a node from each parent
     if not nodes1 or not nodes2:
-        return None
+        return child1, child2  # No crossover occurs if any parent has no nodes
+
     target_node1 = random.choice(nodes1)
     target_node2 = random.choice(nodes2)
 
-    # Copy the target node from parent1
-    copy_target_node1 = copy.deepcopy(target_node1)
+    # Swap the nodes between the two genomes
+    target_node1.value, target_node2.value = target_node2.value, target_node1.value
+    target_node1.feature_index, target_node2.feature_index = target_node2.feature_index, target_node1.feature_index
+    target_node1.left, target_node2.left = target_node2.left, target_node1.left
+    target_node1.right, target_node2.right = target_node2.right, target_node1.right
 
-    # Replace the target node with the target node from parent2
-    target_node1.value = target_node2.value
-    target_node1.feature_index = target_node2.feature_index
-    target_node1.left = target_node2.left
-    target_node1.right = target_node2.right
-
-    # Replace the target node with the target node from parent1
-    target_node2.value = copy_target_node1.value
-    target_node2.feature_index = copy_target_node1.feature_index
-    target_node2.left = copy_target_node1.left
-    target_node2.right = copy_target_node1.right
-    
     return child1, child2
 
-# def simplify(population, x, y):
-#     """
-#     Simply population by removing overflowed individuals.
 
-#     Args:
-#         population (list): List of individuals.
-#         x (array-like): Input data.
-
-#     Returns:
-#         simplified_population (list): List of simplified individuals.
-#     """
-#     simplified_population = []
-#     for individual in population:
-#         with warnings.catch_warnings(record=True)as w:
-#             warnings.simplefilter("always")
-#             cost(individual, x, y)
-#             if len(w) == 0:
-#                 simplified_population.append(individual)
-#             else:
-#                 pass
-#     return simplified_population
 
 def random_tree(depth, num_features):
     if depth == 0:
@@ -205,10 +171,12 @@ def create_population(num_peop,depth,num_features):
     population = []
     num_ones = num_peop//2
     for i in range(num_ones):
-        baby=random_tree(1,num_features)
+        baby_node=random_tree(1,num_features)
+        baby = Individual(genome=baby_node)
         population.append(baby)
     for i in range(num_peop-num_ones):
-        baby=random_tree(depth,num_features)
+        baby_node=random_tree(depth,num_features)
+        baby = Individual(genome=baby_node)
         population.append(baby)
     return population
 
@@ -217,26 +185,56 @@ def cost(genome,x,y):
     mse = np.mean((predictions - y) ** 2)
     return mse
 
-# def cost_population(population, x, y):
-#     costs = np.array([cost(population[j],x,y) for j in range(len(population))])
-#     return costs
-
-def cost_population(population, x, y):
-    cost_list = []
-    removed_el = []
-    for ind in range(len(population)):
-        with warnings.catch_warnings(record=True)as w:
+def assign_population_fitness(population, x, y):
+    """
+    Calculate and assign fitness values to the population.
+    
+    Parameters:
+    - population (list of Individual): The population of individuals.
+    - x (np.ndarray): Input data.
+    - y (np.ndarray): Target data.
+    """
+    removed_indices = []
+    for i, individual in enumerate(population):
+        with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            ind_cost = cost(population[ind], x, y)
-            if len(w) == 0:
-                cost_list.append(ind_cost)
-            else:
-                removed_el.append(ind)
-    for ind in sorted(removed_el, reverse=True):
-        del population[ind]
-            
-    return np.asarray(cost_list)
 
+            if individual.fitness is None:
+                ind_cost = cost(individual.genome, x, y)
+                if len(w) == 0:
+                    individual.fitness = ind_cost
+                else:
+                    removed_indices.append(i)
+                    
+    # Remove invalid individuals
+    for idx in sorted(removed_indices, reverse=True):
+        del population[idx]
+
+def age_population(population):
+    """
+    Increment the age of all individuals in the population.
+    
+    Parameters:
+    - population (list of Individual): The population of individuals.
+    """
+    for individual in population:
+        individual.age += 1
+
+def kill_eldest(population, max_age):
+    """
+    Remove the eldest individuals from the population.
+    
+    Parameters:
+    - population (list of Individual): The population of individuals.
+    - max_age (int): The maximum age an individual can reach before being removed.
+    """
+    population[:] = [ind for ind in population if ind.age <= max_age]
+
+
+def top_n_individuals(population, n):
+    return sorted(population, key=lambda x: x.fitness)[:n]
+
+# TODO requires update to use assign_population_fitness
 def migration(population_1,population_2,num_peop,x,y):
     costs_1 = cost_population(population_1,x,y)
     costs_2 = cost_population(population_2,x,y)
