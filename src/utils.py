@@ -12,7 +12,7 @@ def import_prova():
     print("Pass")
 
 
-def tournament_selection(population, n, k):
+def tournament_selection(population, n, k, elitism=False, elite_count=3):
     """
     Perform tournament selection on a population of individuals.
     
@@ -31,7 +31,7 @@ def tournament_selection(population, n, k):
     # Create an index list for the population
     indices = list(range(len(population)))
 
-    while len(indices) >= k:
+    while len(indices) >= k + elite_count:
         # Randomly select `n` indices for the tournament
         selected_indices = np.random.choice(indices, n, replace=False)
         
@@ -39,9 +39,15 @@ def tournament_selection(population, n, k):
         best_idx = selected_indices[np.argmin([population[i].fitness for i in selected_indices])]
 
         # Remove all other indices except the winner of the tournament
-        for idx in selected_indices:
+        for idx in sorted(selected_indices, reverse=True):
             if idx != best_idx:
                 indices.remove(idx)
+
+    if elitism:
+        fitness_list = [population[i].fitness for i in indices]
+        best_indices = np.argsort(fitness_list)[:elite_count]
+        for idx in sorted(best_indices, reverse=True):
+            indices.remove(indices[idx])
 
     # Return the selected individuals
     return indices
@@ -234,6 +240,23 @@ def kill_eldest(population, max_age):
 def top_n_individuals(population, n):
     return sorted(population, key=lambda x: x.fitness)[:n]
 
+def calculate_mean_fitness(population):
+    return np.mean([ind.fitness for ind in population])
+
+def deduplicate_population(population, p=0.5):
+    """
+    Remove duplicate individuals from the population. With probability p, a duplicate individual is kept.
+    
+    Parameters:
+    - population (list of Individual): The population of individuals.
+    """
+    seen = set()
+    deduplicated = []
+    for ind in population:
+        if ind.fitness not in seen:
+            deduplicated.append(ind)
+            seen.add(ind.fitness)
+    return deduplicated
 # TODO requires update to use assign_population_fitness
 def migration(population_1,population_2,num_peop,x,y):
     costs_1 = cost_population(population_1,x,y)
