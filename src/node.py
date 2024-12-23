@@ -63,7 +63,7 @@ def random_tree(depth, num_features):
         if random.random() < 0.5:
             return Node(feature_index=random.randint(0, num_features - 1))
         else:
-            return Node(value=random.randint(1, 10))
+            return Node(value=np.random.normal(0,1,1))
 
     operator = random.choice(operators)
     node = Node(value=operator)

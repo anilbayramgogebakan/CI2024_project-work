@@ -203,13 +203,36 @@ class Node:
             return f"{operator_symbol}({self.left})"
 
         return f"({self.left} {operator_symbol} {self.right})"
+    
+    def __eq__(self, other):
+        if not isinstance(other, Node):
+            return False
+        return (
+            np.array_equal(self.value, other.value) and
+            self.feature_index == other.feature_index and
+            self.left == other.left and
+            self.right == other.right
+        )
+
+    def __hash__(self):
+        def hashable(value):
+            if isinstance(value, np.ndarray):
+                return tuple(value.flatten())  # Convert array to a hashable tuple
+            return value
+
+        return hash((
+            hashable(self.value),
+            self.feature_index,
+            self.left,
+            self.right,
+        ))
 
 def random_tree(depth, num_features):
     if depth == 0:
         if random.random() < 0.5:
             return Node(feature_index=random.randint(0, num_features - 1))
         else:
-            return Node(value=random.randint(1, 10))
+            return Node(value=np.random.normal(0,1,1))
 
     operator = random.choice(operators)
     node = Node(value=operator)
