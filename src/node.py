@@ -10,14 +10,67 @@ class Node:
         np.cos: 'cos',
         np.exp: 'exp',  
     }
+    comp_list = {
+        np.add: 1,
+        np.subtract: 1,
+        np.multiply: 1,
+        np.sin: 3,
+        np.cos: 3,
+        np.exp: 4,
+    }
     operators=[np.add, np.subtract, np.multiply, np.sin, np.cos, np.exp]
     one_arg_op=[np.sin, np.cos, np.exp]
 
     def __init__(self, value=None, feature_index=None, left=None, right=None):
-        self.value = value 
+        self._value = value 
         self.feature_index = feature_index
-        self.left = left
-        self.right = right
+        self._left = left
+        self._right = right
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, new_value):
+        self._value = new_value
+        self.update_complexity()
+
+    @property
+    def left(self):
+        return self._left
+
+    @left.setter
+    def left(self, new_left):
+        self._left = new_left
+        self.update_complexity()
+
+    @property
+    def right(self):
+        return self._right
+
+    @right.setter
+    def right(self, new_right):
+        self._right = new_right
+        self.update_complexity()
+
+    @property
+    def complexity(self):
+        return self.calculate_complexity()
+
+    def update_complexity(self):
+        self._complexity = self.calculate_complexity()
+
+    def calculate_complexity(self):
+        if not self.is_operator(self.value):
+            return 0
+        if self.value in self.one_arg_op:
+            if self.left:
+                return self.comp_list[self.value]+(self.comp_list[self.value] * self.left.calculate_complexity())
+        if self.left and self.right: 
+            left_complexity = self.left.calculate_complexity()
+            right_complexity = self.right.calculate_complexity()
+            return self.comp_list[self.value]+(self.comp_list[self.value] * (left_complexity + right_complexity))
     
     def is_operator(self, val):
         return val in self.operators
