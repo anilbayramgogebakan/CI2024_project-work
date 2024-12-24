@@ -246,15 +246,20 @@ def migration(population_1,population_2,num_peop,num_rand_peop):
 
 def mutation_w_sa(individual, feature_count,alpha,x,y):
     child = mutation(individual, feature_count)
-    child.fitness = cost(child.genome,x,y)
-    #print(child.fitness)
-    if child.fitness > individual.fitness:
-        individual.T *=alpha
-        return child
-    else: 
-        p= np.exp((child.fitness-individual.fitness)/(alpha*individual.T))
-        if np.random.random() < p:
-            raise ValueError
-        else:
-            individual.T *=alpha
-            return child
+    with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            ind_cost = cost(child.genome,x,y)
+            if len(w) == 0:
+                child.fitness = ind_cost
+                if child.fitness > individual.fitness:
+                    individual.T *=alpha
+                    return child, True
+                else: 
+                    p= np.exp((child.fitness-individual.fitness)/(alpha*individual.T))
+                    if np.random.random() < p:
+                        return None, False
+                    else:
+                        individual.T *=alpha
+                        return child, True
+            else: 
+                return None, False
