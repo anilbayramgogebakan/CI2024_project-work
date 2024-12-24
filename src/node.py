@@ -18,13 +18,13 @@ class Node:
         np.add: 1,
         np.subtract: 1,
         np.multiply: 1,
-        np.sin: 3,
-        np.cos: 3,
-        np.exp: 4,
+        np.sin: 2,
+        np.cos: 2,
+        np.exp: 3,
         np.abs: 1,
-        np.divide: 2,
-        np.log: 4,
-        np.tan: 3
+        np.divide: 1,
+        np.log: 3,
+        np.tan: 2
     }
     unary_operators=[np.sin, np.cos, np.exp, np.abs, np.log, np.tan]
     binary_operators=[np.add, np.subtract, np.multiply, np.divide]

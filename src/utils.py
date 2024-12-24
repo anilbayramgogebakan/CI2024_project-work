@@ -2,6 +2,7 @@ import numpy as np
 import random
 import copy
 import warnings
+from tqdm import tqdm
 from src.node import Node
 from src.Individual import Individual
 
@@ -258,7 +259,8 @@ def kill_constant(population):
     Parameters:
     - population (list of Individual): The population of individuals.
     """
-    population[:] = [ind for ind in population if (not ind.genome.complexity==1 or not ind.genome.feature_index==None) and random.random() < 0.5]
+    
+    population[:] = [ind for ind in population if not (ind.genome.complexity==1 and ind.genome.feature_index==None)]
 
 
 def top_n_individuals(population, n):
@@ -270,7 +272,7 @@ def calculate_mean_fitness(population):
 def calculate_mean_complexity(population):
     return np.mean([ind.genome.complexity for ind in population])
 
-def deduplicate_population(population, p=0): 
+def deduplicate_population(population): 
     """
     Remove duplicate individuals from the population. With probability p, a duplicate individual is kept.
     
@@ -280,8 +282,6 @@ def deduplicate_population(population, p=0):
     seen = set()
     deduplicated = []
     for ind in population:
-        if ind.fitness in seen and random.random() < p:
-            deduplicated.append(ind)
         if ind.fitness not in seen:
             deduplicated.append(ind)
             seen.add(ind.fitness)
@@ -331,7 +331,7 @@ def fit_constants(individual, iter,x, y):
         y (np.ndarray): Target data.
     """
 
-    for _ in range(iter):
+    for _ in (iter):
         child, success = mutation_w_sa(individual, x.shape[1],x,y, ONLY_CONSTANT=True)
         if success:
             individual = child
@@ -354,6 +354,9 @@ def simplify(gen):
                 simplify(gen.left)
             if gen.right.value in operators:
                 simplify(gen.right)
-    elif gen.left!=None:
-        if gen.left.value in operators:
+    elif gen.left!=None:    # unary operator
+        if gen.value==np.abs and isinstance(gen.left.value, np.ndarray):
+            gen.value=gen.evaluate()
+            gen.left=None
+        elif gen.left.value in operators:
             simplify(gen.left)
