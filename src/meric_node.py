@@ -275,9 +275,11 @@ def simplify(gen):
             gen.value=gen.evaluate()
             gen.right=None
             gen.left=None
-        else:
+        elif gen.feature_index == None:
             simplify(gen.left)
             if gen.right != None:
                 simplify(gen.right)
+        else:
+            pass
     else:
         pass
