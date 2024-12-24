@@ -8,7 +8,8 @@ class Node:
         np.multiply: '*',
         np.sin: 'sin',
         np.cos: 'cos',
-        np.exp: 'exp',  
+        np.exp: 'exp',
+        np.abs: 'abs',  
     }
     comp_list = {
         np.add: 1,
@@ -17,9 +18,10 @@ class Node:
         np.sin: 2,
         np.cos: 2,
         np.exp: 3,
+        np.abs: 1,
     }
-    operators=[np.add, np.subtract, np.multiply, np.sin, np.cos, np.exp]
-    one_arg_op=[np.sin, np.cos, np.exp]
+    operators=[np.add, np.subtract, np.multiply, np.sin, np.cos, np.exp, np.abs]
+    one_arg_op=[np.sin, np.cos, np.exp, np.abs]
 
     def __init__(self, value=None, feature_index=None, left=None, right=None):
         self._value = value 
@@ -108,7 +110,7 @@ class Node:
 
         operator_symbol = self.op_list[self.value]
 
-        if self.value in {np.sin, np.cos, np.log, np.exp}:
+        if self.value in self.one_arg_op:
             return f"{operator_symbol}({self.left})"
 
         return f"({self.left} {operator_symbol} {self.right})"
@@ -121,7 +123,7 @@ class Node:
 
         operator_symbol = self.op_list[self.value]
 
-        if self.value in {np.sin, np.cos, np.log, np.exp}:
+        if self.value in self.one_arg_op:
             return f"{operator_symbol}({self.left})"
 
         return f"({self.left} {operator_symbol} {self.right})"

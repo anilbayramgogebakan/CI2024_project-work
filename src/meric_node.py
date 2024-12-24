@@ -2,11 +2,11 @@ import numpy as np
 import random
 import copy
 import warnings
-from src.Node import Node
+from src.node import Node
 from src.Individual import Individual
 
-operators=[np.add, np.subtract, np.multiply, np.sin, np.cos, np.exp]
-one_arg_op=[np.sin, np.cos, np.exp]
+operators=[np.add, np.subtract, np.multiply, np.sin, np.cos, np.exp, np.abs]
+one_arg_op=[np.sin, np.cos, np.exp, np.abs]
 
 def import_prova():
     print("Pass")
@@ -244,7 +244,7 @@ def migration(population_1,population_2,num_peop,num_rand_peop):
         population_2.remove(i)
         population_1.append(i)
 
-def mutation_w_sa(individual, feature_count,alpha,x,y):
+def mutation_w_sa(individual, feature_count,x,y,alpha=0.95):
     child = mutation(individual, feature_count)
     with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
