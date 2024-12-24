@@ -14,9 +14,9 @@ class Node:
         np.add: 1,
         np.subtract: 1,
         np.multiply: 1,
-        np.sin: 3,
-        np.cos: 3,
-        np.exp: 4,
+        np.sin: 2,
+        np.cos: 2,
+        np.exp: 3,
     }
     operators=[np.add, np.subtract, np.multiply, np.sin, np.cos, np.exp]
     one_arg_op=[np.sin, np.cos, np.exp]
@@ -26,6 +26,7 @@ class Node:
         self.feature_index = feature_index
         self._left = left
         self._right = right
+        self._complexity = self.calculate_complexity()
 
     @property
     def value(self):
@@ -56,14 +57,14 @@ class Node:
 
     @property
     def complexity(self):
-        return self.calculate_complexity()
+        return self._complexity
 
     def update_complexity(self):
         self._complexity = self.calculate_complexity()
 
     def calculate_complexity(self):
         if not self.is_operator(self.value):
-            return 0
+            return 1
         if self.value in self.one_arg_op:
             if self.left:
                 return self.comp_list[self.value]+(self.comp_list[self.value] * self.left.calculate_complexity())

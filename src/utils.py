@@ -2,7 +2,7 @@ import numpy as np
 import random
 import copy
 import warnings
-from src.Node import Node
+from src.node import Node
 from src.Individual import Individual
 
 operators=[np.add, np.subtract, np.multiply, np.sin, np.cos, np.exp]
@@ -36,7 +36,7 @@ def tournament_selection(population, n, k, elitism=False, elite_count=3):
         selected_indices = np.random.choice(indices, n, replace=False)
         
         # Find the index of the individual with the best (lowest) fitness in the selected group
-        best_idx = selected_indices[np.argmin([population[i].fitness for i in selected_indices])]
+        best_idx = selected_indices[np.argmin([population[i].fitness*(population[i].genome.complexity*0.1 +1)for i in selected_indices])]
 
         # Remove all other indices except the winner of the tournament
         for idx in sorted(selected_indices, reverse=True):
@@ -61,7 +61,7 @@ def collect_nodes(n, nodes):
     collect_nodes(n.left, nodes)
     collect_nodes(n.right, nodes)
 
-def mutation(individual, feature_count):
+def mutation(individual, feature_count): # TODO: p values should be configurable
     """
     Randomly modifies a node's value or feature_index in the tree.
     
@@ -89,7 +89,8 @@ def mutation(individual, feature_count):
     if target_node.feature_index is not None: # Node is Xn
         if random.random() < 0.5:
         # Modify the feature index
-            target_node.feature_index = random.randint(0, feature_count - 1) #TODO: find a better way to exclude existing feature index
+            target_node.feature_index = np.random.choice([i for i in range(feature_count) if i != target_node.feature_index])
+            # target_node.feature_index = random.randint(0, feature_count - 1) #TODO: find a better way to exclude existing feature index
         else:
             # Assign constant value to feature node
             target_node.feature_index = None
@@ -97,10 +98,17 @@ def mutation(individual, feature_count):
     else:
     # Modify the operator or constant
         if target_node.value in operators:
-            if target_node.value in one_arg_op: # If the operator is one-argument, pick another one-argument operator
-                target_node.value = np.random.choice([op for op in one_arg_op if op != target_node.value])
-            else: # If the operator is two-argument, pick another two-argument operator
-                target_node.value = np.random.choice([op for op in set(operators)-set(one_arg_op) if op != target_node.value])
+            if random.random() < 0.5: # Replace the operator with a constant or feature
+                if random.random() < 0.5: # Replace the operator with a constant
+                    target_node.value = np.random.normal(0,1,1)
+                else: # Replace the operator with a feature
+                    target_node.value = None
+                    target_node.feature_index = random.randint(0, feature_count - 1)
+            else: # Replace the operator with another operator
+                if target_node.value in one_arg_op: # If the operator is one-argument, pick another one-argument operator
+                    target_node.value = np.random.choice([op for op in one_arg_op if op != target_node.value])
+                else: # If the operator is two-argument, pick another two-argument operator
+                    target_node.value = np.random.choice([op for op in set(operators)-set(one_arg_op) if op != target_node.value])
         else: # If the node is a constant, assign a new constant value
             if random.random() < 0.5:
                 # Replace the constant value with constant value
@@ -177,7 +185,7 @@ def create_population(num_peop,depth,num_features):
     population = []
     num_ones = num_peop//2
     for i in range(num_ones):
-        baby_node=random_tree(1,num_features)
+        baby_node=random_tree(2,num_features)
         baby = Individual(genome=baby_node)
         population.append(baby)
     for i in range(num_peop-num_ones):
@@ -236,12 +244,24 @@ def kill_eldest(population, max_age):
     """
     population[:] = [ind for ind in population if ind.age <= max_age]
 
+def kill_constant(population):
+    """
+    Remove the constant individuals from the population.
+    
+    Parameters:
+    - population (list of Individual): The population of individuals.
+    """
+    population[:] = [ind for ind in population if not ind.genome.complexity==1 or not ind.genome.feature_index==None]
+
 
 def top_n_individuals(population, n):
     return sorted(population, key=lambda x: x.fitness)[:n]
 
 def calculate_mean_fitness(population):
     return np.mean([ind.fitness for ind in population])
+
+def calculate_mean_complexity(population):
+    return np.mean([ind.genome.complexity for ind in population])
 
 def deduplicate_population(population, p=0.5):
     """
@@ -258,15 +278,30 @@ def deduplicate_population(population, p=0.5):
             seen.add(ind.fitness)
     return deduplicated
 # TODO requires update to use assign_population_fitness
-def migration(population_1,population_2,num_peop,x,y):
-    costs_1 = cost_population(population_1,x,y)
-    costs_2 = cost_population(population_2,x,y)
-    best_1, worst_1 = tournament_selection(costs_1,num_peop)
-    best_2, worst_2 = tournament_selection(costs_2,num_peop)
-    elements_1 = [population_1[i] for i in best_1]
-    elements_2 = [population_2[i] for i in best_2]
-    for i, idx in enumerate(best_1):
-        population_1[idx] = elements_2[i]
-    for i, idx in enumerate(best_2):
-        population_2[idx] = elements_1[i]
-    return population_1,population_2
+# def migration(population_1,population_2,num_peop,x,y):
+#     costs_1 = cost_population(population_1,x,y)
+#     costs_2 = cost_population(population_2,x,y)
+#     best_1, worst_1 = tournament_selection(costs_1,num_peop)
+#     best_2, worst_2 = tournament_selection(costs_2,num_peop)
+#     elements_1 = [population_1[i] for i in best_1]
+#     elements_2 = [population_2[i] for i in best_2]
+#     for i, idx in enumerate(best_1):
+#         population_1[idx] = elements_2[i]
+#     for i, idx in enumerate(best_2):
+#         population_2[idx] = elements_1[i]
+#     return population_1,population_2
+
+def mutation_w_sa(individual, feature_count, x, y, alpha=0.95):
+    child = mutation(individual, feature_count)
+    child.fitness = cost(child.genome,x,y)
+    #print(child.fitness)
+    if child.fitness > individual.fitness:
+        individual.T *=alpha
+        return child, True
+    else: 
+        p= np.exp((child.fitness-individual.fitness)/(alpha*individual.T))
+        if np.random.random() < p:
+            return None, False
+        else:
+            individual.T *=alpha
+            return child, True
