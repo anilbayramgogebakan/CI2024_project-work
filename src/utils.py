@@ -5,12 +5,12 @@ import warnings
 from src.node import Node
 from src.Individual import Individual
 
-# unary_operators=[np.sin, np.cos, np.exp, np.abs, np.log, np.tan]
-# binary_operators=[np.add, np.subtract, np.multiply, np.divide]
-
-
-unary_operators=[]
+unary_operators=[np.sin, np.cos, np.exp, np.abs, np.log, np.tan]
 binary_operators=[np.add, np.subtract, np.multiply, np.divide]
+
+
+# unary_operators=[]
+# binary_operators=[np.add, np.subtract, np.multiply, np.divide]
 operators = unary_operators + binary_operators
 
 def import_prova():
@@ -108,6 +108,8 @@ def mutation(individual, feature_count, ONLY_CONSTANT=False): # TODO: p values s
                     target_node.value = np.random.normal(0,1,1)
                 else: # Replace the operator with a feature
                     target_node.value = None
+                    target_node.left = None
+                    target_node.right = None
                     target_node.feature_index = random.randint(0, feature_count - 1)
             else: # Replace the operator with another operator
                 if target_node.value in unary_operators: # If the operator is one-argument, pick another one-argument operator
@@ -343,22 +345,15 @@ def simplify_population(population):
                
 def simplify(gen):
     if gen.right!=None:
-        try:
-            if isinstance(gen.left.value, np.ndarray) and isinstance(gen.right.value, np.ndarray):
-                gen.value=gen.evaluate()
-                gen.right=None
-                gen.left=None
-            else:
-                if gen.left.value in operators:
-                    simplify(gen.left)
-                if gen.right.value in operators:
-                    simplify(gen.right)
-        except:
-            print(gen)
-            print("gen.left, ",gen.left)
-            print("gen.right, ",gen.right)
-            print("gen.value, ",gen.value)
-            print("gen.feature_index, ",gen.feature_index)
+        if isinstance(gen.left.value, np.ndarray) and isinstance(gen.right.value, np.ndarray):
+            gen.value=gen.evaluate()
+            gen.right=None
+            gen.left=None
+        else:
+            if gen.left.value in operators:
+                simplify(gen.left)
+            if gen.right.value in operators:
+                simplify(gen.right)
     elif gen.left!=None:
         if gen.left.value in operators:
             simplify(gen.left)
