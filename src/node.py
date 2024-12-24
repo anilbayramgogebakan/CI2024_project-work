@@ -9,19 +9,27 @@ class Node:
         np.sin: 'sin',
         np.cos: 'cos',
         np.exp: 'exp',
-        np.abs: 'abs',  
+        np.abs: 'abs',
+        np.divide: '/',
+        np.log: 'log',
+        np.tan: 'tan'  
     }
     comp_list = {
         np.add: 1,
         np.subtract: 1,
         np.multiply: 1,
-        np.sin: 2,
-        np.cos: 2,
-        np.exp: 3,
+        np.sin: 3,
+        np.cos: 3,
+        np.exp: 4,
         np.abs: 1,
+        np.divide: 2,
+        np.log: 4,
+        np.tan: 3
     }
-    operators=[np.add, np.subtract, np.multiply, np.sin, np.cos, np.exp, np.abs]
-    one_arg_op=[np.sin, np.cos, np.exp, np.abs]
+    unary_operators=[np.sin, np.cos, np.exp, np.abs, np.log, np.tan]
+    binary_operators=[np.add, np.subtract, np.multiply, np.divide]
+    operators = unary_operators + binary_operators
+
 
     def __init__(self, value=None, feature_index=None, left=None, right=None):
         self._value = value 
@@ -67,7 +75,7 @@ class Node:
     def calculate_complexity(self):
         if not self.is_operator(self.value):
             return 1
-        if self.value in self.one_arg_op:
+        if self.value in self.unary_operators:
             if self.left:
                 return self.comp_list[self.value]+(self.comp_list[self.value] * self.left.calculate_complexity())
         if self.left and self.right: 
@@ -91,7 +99,7 @@ class Node:
                 #print("ben bir sayıyım")
                 return self.value
         # if it is an operator
-        if self.value in self.one_arg_op:
+        if self.value in self.unary_operators:
             operand_value = self.left.evaluate(x)
             #print("tek",operand_value)
             return self.value(operand_value)
@@ -110,7 +118,7 @@ class Node:
 
         operator_symbol = self.op_list[self.value]
 
-        if self.value in self.one_arg_op:
+        if self.value in self.unary_operators:
             return f"{operator_symbol}({self.left})"
 
         return f"({self.left} {operator_symbol} {self.right})"
@@ -123,7 +131,7 @@ class Node:
 
         operator_symbol = self.op_list[self.value]
 
-        if self.value in self.one_arg_op:
+        if self.value in self.unary_operators:
             return f"{operator_symbol}({self.left})"
 
         return f"({self.left} {operator_symbol} {self.right})"
