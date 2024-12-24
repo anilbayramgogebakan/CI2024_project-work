@@ -5,14 +5,19 @@ import warnings
 from src.node import Node
 from src.Individual import Individual
 
-operators=[np.add, np.subtract, np.multiply, np.sin, np.cos, np.exp, np.abs]
-one_arg_op=[np.sin, np.cos, np.exp, np.abs]
+unary_operators=[np.sin, np.cos, np.exp, np.abs, np.log, np.tan]
+binary_operators=[np.add, np.subtract, np.multiply, np.divide]
+
+
+# unary_operators=[]
+# binary_operators=[np.add, np.subtract, np.multiply, np.divide]
+operators = unary_operators + binary_operators
 
 def import_prova():
     print("Pass")
 
 
-def tournament_selection(population, n, k):
+def tournament_selection(population, n, k, elitism=False, elite_count=3):
     """
     Perform tournament selection on a population of individuals.
     
@@ -31,17 +36,23 @@ def tournament_selection(population, n, k):
     # Create an index list for the population
     indices = list(range(len(population)))
 
-    while len(indices) >= k:
+    while len(indices) >= k + elite_count:
         # Randomly select `n` indices for the tournament
         selected_indices = np.random.choice(indices, n, replace=False)
         
         # Find the index of the individual with the best (lowest) fitness in the selected group
-        best_idx = selected_indices[np.argmin([population[i].fitness for i in selected_indices])]
+        best_idx = selected_indices[np.argmin([population[i].fitness*(population[i].genome.complexity*0.1 +1)for i in selected_indices])]
 
         # Remove all other indices except the winner of the tournament
-        for idx in selected_indices:
+        for idx in sorted(selected_indices, reverse=True):
             if idx != best_idx:
                 indices.remove(idx)
+
+    if elitism:
+        fitness_list = [population[i].fitness for i in indices]
+        best_indices = np.argsort(fitness_list)[:elite_count]
+        for idx in sorted(best_indices, reverse=True):
+            indices.remove(indices[idx])
 
     # Return the selected individuals
     return indices
@@ -55,7 +66,7 @@ def collect_nodes(n, nodes):
     collect_nodes(n.left, nodes)
     collect_nodes(n.right, nodes)
 
-def mutation(individual, feature_count):
+def mutation(individual, feature_count, ONLY_CONSTANT=False): # TODO: p values should be configurable
     """
     Randomly modifies a node's value or feature_index in the tree.
     
@@ -80,23 +91,33 @@ def mutation(individual, feature_count):
     target_node = random.choice(nodes)
 
     # Modify the target node
-    if target_node.feature_index is not None: # Node is Xn
+    if target_node.feature_index is not None and ONLY_CONSTANT==False: # Node is Xn
         if random.random() < 0.5:
         # Modify the feature index
-            target_node.feature_index = random.randint(0, feature_count - 1) #TODO: find a better way to exclude existing feature index
+            target_node.feature_index = np.random.choice([i for i in range(feature_count) if i != target_node.feature_index])
+            # target_node.feature_index = random.randint(0, feature_count - 1) #TODO: find a better way to exclude existing feature index
         else:
             # Assign constant value to feature node
             target_node.feature_index = None
             target_node.value = np.random.normal(0,1,1)
     else:
     # Modify the operator or constant
-        if target_node.value in operators:
-            if target_node.value in one_arg_op: # If the operator is one-argument, pick another one-argument operator
-                target_node.value = np.random.choice([op for op in one_arg_op if op != target_node.value])
-            else: # If the operator is two-argument, pick another two-argument operator
-                target_node.value = np.random.choice([op for op in set(operators)-set(one_arg_op) if op != target_node.value])
+        if target_node.value in operators and ONLY_CONSTANT==False: # If the node is an operator
+            if random.random() < 0.5: # Replace the operator with a constant or feature
+                if random.random() < 0.5: # Replace the operator with a constant
+                    target_node.value = np.random.normal(0,1,1)
+                else: # Replace the operator with a feature
+                    target_node.value = None
+                    target_node.left = None
+                    target_node.right = None
+                    target_node.feature_index = random.randint(0, feature_count - 1)
+            else: # Replace the operator with another operator
+                if target_node.value in unary_operators: # If the operator is one-argument, pick another one-argument operator
+                    target_node.value = np.random.choice([op for op in unary_operators if op != target_node.value])
+                else: # If the operator is two-argument, pick another two-argument operator
+                    target_node.value = np.random.choice([op for op in set(operators)-set(unary_operators) if op != target_node.value])
         else: # If the node is a constant, assign a new constant value
-            if random.random() < 0.5:
+            if random.random() < 0.5 or ONLY_CONSTANT==True:
                 # Replace the constant value with constant value
                 target_node.value = np.random.normal(0,1,1)
             else:
@@ -147,6 +168,7 @@ def crossover(parent1, parent2):
     return child1, child2
 
 
+
 def random_tree(depth, num_features):
     if depth == 0:
         if random.random() < 0.5:
@@ -157,7 +179,7 @@ def random_tree(depth, num_features):
     operator = random.choice(operators)
     node = Node(value=operator)
 
-    if operator in one_arg_op:
+    if operator in unary_operators:
         node.left = random_tree(depth - 1, num_features)
         node.right = None
     else:
@@ -229,23 +251,56 @@ def kill_eldest(population, max_age):
     """
     population[:] = [ind for ind in population if ind.age <= max_age]
 
+def kill_constant(population):
+    """
+    Remove the constant individuals from the population.
+    
+    Parameters:
+    - population (list of Individual): The population of individuals.
+    """
+    
+    population[:] = [ind for ind in population if not (ind.genome.complexity==1 and ind.genome.feature_index==None)]
+
 
 def top_n_individuals(population, n):
     return sorted(population, key=lambda x: x.fitness)[:n]
 
-# TODO requires update to use assign_population_fitness
-def migration(population_1,population_2,num_peop,num_rand_peop):
-    best_1 = tournament_selection(population_1,num_rand_peop,num_peop)
-    best_2 = tournament_selection(population_2,num_rand_peop,num_peop)
-    for i in best_1:
-        population_1.remove(i)
-        population_2.append(i)
-    for i in best_2:
-        population_2.remove(i)
-        population_1.append(i)
+def calculate_mean_fitness(population):
+    return np.mean([ind.fitness for ind in population])
 
-def mutation_w_sa(individual, feature_count,x,y,alpha=0.95):
-    child = mutation(individual, feature_count)
+def calculate_mean_complexity(population):
+    return np.mean([ind.genome.complexity for ind in population])
+
+def deduplicate_population(population): 
+    """
+    Remove duplicate individuals from the population. With probability p, a duplicate individual is kept.
+    
+    Parameters:
+    - population (list of Individual): The population of individuals.
+    """
+    seen = set()
+    deduplicated = []
+    for ind in population:
+        if ind.fitness not in seen:
+            deduplicated.append(ind)
+            seen.add(ind.fitness)
+    return deduplicated
+# TODO requires update to use assign_population_fitness
+# def migration(population_1,population_2,num_peop,x,y):
+#     costs_1 = cost_population(population_1,x,y)
+#     costs_2 = cost_population(population_2,x,y)
+#     best_1, worst_1 = tournament_selection(costs_1,num_peop)
+#     best_2, worst_2 = tournament_selection(costs_2,num_peop)
+#     elements_1 = [population_1[i] for i in best_1]
+#     elements_2 = [population_2[i] for i in best_2]
+#     for i, idx in enumerate(best_1):
+#         population_1[idx] = elements_2[i]
+#     for i, idx in enumerate(best_2):
+#         population_2[idx] = elements_1[i]
+#     return population_1,population_2
+
+def mutation_w_sa(individual, feature_count,x,y, ONLY_CONSTANT=False, alpha=0.95):
+    child = mutation(individual, feature_count, ONLY_CONSTANT)
     with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             ind_cost = cost(child.genome,x,y)
@@ -263,23 +318,64 @@ def mutation_w_sa(individual, feature_count,x,y,alpha=0.95):
                         return child, True
             else: 
                 return None, False
-            
+
+def fit_constants(individual, iter,x, y):
+    """
+    Fit the constant value of a node to minimize the cost function.
+    
+    Args:
+        node (Node): The node to fit.
+        iter (int): The number of iterations to run the optimization.
+        x (np.ndarray): Input data.
+        y (np.ndarray): Target data.
+    """
+
+    for _ in (iter):
+        child, success = mutation_w_sa(individual, x.shape[1],x,y, ONLY_CONSTANT=True)
+        if success:
+            individual = child
+    
+    return individual
+
 def simplify_population(population):
     for i in range(len(population)):
         gen = population[i].genome
         simplify(gen)
                
 def simplify(gen):
+    if gen.left:
+        calc_simp(gen.left)
+    if gen.right:
+        calc_simp(gen.right)
+
     if gen.right!=None:
         if isinstance(gen.left.value, np.ndarray) and isinstance(gen.right.value, np.ndarray):
             gen.value=gen.evaluate()
             gen.right=None
             gen.left=None
-        elif gen.feature_index == None:
-            simplify(gen.left)
-            if gen.right != None:
-                simplify(gen.right)
-        else:
-            pass
-    else:
-        pass
+        
+    elif gen.left!=None:    # unary operator
+        if gen.value==np.abs and isinstance(gen.left.value, np.ndarray):
+            gen.value=gen.evaluate()
+            gen.left=None
+
+def calc_population(population):
+    for i in range(len(population)):
+        gen = population[i].genome
+        calc_simp(gen)
+        
+def calc_simp(gen):
+    if gen.left:
+        calc_simp(gen.left)
+    if gen.right:
+        calc_simp(gen.right)
+
+    if gen.right!=None:
+        if isinstance(gen.left.value, np.ndarray) and isinstance(gen.right.value, np.ndarray):
+            gen.value=gen.evaluate()
+            gen.right=None
+            gen.left=None
+    elif gen.left!=None:    # unary operator
+        if isinstance(gen.left.value, np.ndarray):
+            gen.value=gen.evaluate()
+            gen.left=None
