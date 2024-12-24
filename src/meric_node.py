@@ -263,3 +263,21 @@ def mutation_w_sa(individual, feature_count,x,y,alpha=0.95):
                         return child, True
             else: 
                 return None, False
+            
+def simplify_population(population):
+    for i in range(len(population)):
+        gen = population[i].genome
+        simplify(gen)
+               
+def simplify(gen):
+    if gen.right!=None:
+        if isinstance(gen.left.value, np.ndarray) and isinstance(gen.right.value, np.ndarray):
+            gen.value=gen.evaluate()
+            gen.right=None
+            gen.left=None
+        else:
+            simplify(gen.left)
+            if gen.right != None:
+                simplify(gen.right)
+    else:
+        pass
