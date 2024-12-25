@@ -331,32 +331,47 @@ def fit_constants(individual, iter,x, y):
         y (np.ndarray): Target data.
     """
 
-    for _ in (iter):
+    for _ in range(iter):
         child, success = mutation_w_sa(individual, x.shape[1],x,y, ONLY_CONSTANT=True)
         if success:
             individual = child
     
     return individual
 
-def simplify_population(population):
+def simplify_constant_population(population):
     for i in range(len(population)):
         gen = population[i].genome
-        simplify(gen)
+        simplify_constant(gen)
                
-def simplify(gen):
+def simplify_constant(gen):
+    if gen.left:
+        simplify_constant(gen.left)
+    if gen.right:
+        simplify_constant(gen.right)
+
     if gen.right!=None:
         if isinstance(gen.left.value, np.ndarray) and isinstance(gen.right.value, np.ndarray):
             gen.value=gen.evaluate()
             gen.right=None
             gen.left=None
-        else:
-            if gen.left.value in operators:
-                simplify(gen.left)
-            if gen.right.value in operators:
-                simplify(gen.right)
+
+def simplify_operation_population(population):
+    for i in range(len(population)):
+        gen = population[i].genome
+        simplify_operation(gen)
+        
+def simplify_operation(gen):
+    if gen.left:
+        simplify_operation(gen.left)
+    if gen.right:
+        simplify_operation(gen.right)
+
+    if gen.right!=None:
+        if isinstance(gen.left.value, np.ndarray) and isinstance(gen.right.value, np.ndarray):
+            gen.value=gen.evaluate()
+            gen.right=None
+            gen.left=None
     elif gen.left!=None:    # unary operator
-        if gen.value==np.abs and isinstance(gen.left.value, np.ndarray):
+        if isinstance(gen.left.value, np.ndarray):
             gen.value=gen.evaluate()
             gen.left=None
-        elif gen.left.value in operators:
-            simplify(gen.left)
