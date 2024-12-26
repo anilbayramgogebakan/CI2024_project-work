@@ -18,7 +18,7 @@ def import_prova():
     print("Pass")
 
 
-def tournament_selection(population, n, k, elitism=False, elite_count=3):
+def tournament_selection(population, n, k, ELITISM=False, elite_count=3):
     """
     Perform tournament selection on a population of individuals.
     
@@ -37,6 +37,9 @@ def tournament_selection(population, n, k, elitism=False, elite_count=3):
     # Create an index list for the population
     indices = list(range(len(population)))
 
+    if not ELITISM:
+        elite_count=0
+        
     while len(indices) >= k + elite_count:
         # Randomly select `n` indices for the tournament
         selected_indices = np.random.choice(indices, n, replace=False)
@@ -49,7 +52,7 @@ def tournament_selection(population, n, k, elitism=False, elite_count=3):
             if idx != best_idx:
                 indices.remove(idx)
 
-    if elitism:
+    if ELITISM:
         fitness_list = [population[i].fitness for i in indices]
         best_indices = np.argsort(fitness_list)[:elite_count]
         for idx in sorted(best_indices, reverse=True):
@@ -103,20 +106,21 @@ def mutation(individual, feature_count, ONLY_CONSTANT=False): # TODO: p values s
             target_node.value = np.random.normal(0,1,1)
     else:
     # Modify the operator or constant
-        if target_node.value in operators and ONLY_CONSTANT==False: # If the node is an operator
-            if random.random() < 0.5: # Replace the operator with a constant or feature
-                if random.random() < 0.5: # Replace the operator with a constant
-                    target_node.value = np.random.normal(0,1,1)
-                else: # Replace the operator with a feature
-                    target_node.value = None
-                    target_node.left = None
-                    target_node.right = None
-                    target_node.feature_index = random.randint(0, feature_count - 1)
-            else: # Replace the operator with another operator
-                if target_node.value in unary_operators: # If the operator is one-argument, pick another one-argument operator
-                    target_node.value = np.random.choice([op for op in unary_operators if op != target_node.value])
-                else: # If the operator is two-argument, pick another two-argument operator
-                    target_node.value = np.random.choice([op for op in set(operators)-set(unary_operators) if op != target_node.value])
+        if target_node.value in operators: # If the node is an operator
+            if ONLY_CONSTANT==False:
+                if random.random() < 0.5: # Replace the operator with a constant or feature
+                    if random.random() < 0.5: # Replace the operator with a constant
+                        target_node.value = np.random.normal(0,1,1)
+                    else: # Replace the operator with a feature
+                        target_node.value = None
+                        target_node.left = None
+                        target_node.right = None
+                        target_node.feature_index = random.randint(0, feature_count - 1)
+                else: # Replace the operator with another operator
+                    if target_node.value in unary_operators: # If the operator is one-argument, pick another one-argument operator
+                        target_node.value = np.random.choice([op for op in unary_operators if op != target_node.value])
+                    else: # If the operator is two-argument, pick another two-argument operator
+                        target_node.value = np.random.choice([op for op in set(operators)-set(unary_operators) if op != target_node.value])
         else: # If the node is a constant, assign a new constant value
             if random.random() < 0.5 or ONLY_CONSTANT==True:
                 # Replace the constant value with constant value
@@ -307,11 +311,11 @@ def mutation_w_sa(individual, feature_count,x,y, ONLY_CONSTANT=False, alpha=0.95
             ind_cost = cost(child.genome,x,y)
             if len(w) == 0:
                 child.fitness = ind_cost
-                if child.fitness > individual.fitness:
+                if child.fitness < individual.fitness:
                     individual.T *=alpha
                     return child, True
                 else: 
-                    p= np.exp((child.fitness-individual.fitness)/(alpha*individual.T))
+                    p= np.exp((individual.fitness-child.fitness)/(alpha*individual.T))
                     if np.random.random() < p:
                         return None, False
                     else:
@@ -334,8 +338,9 @@ def fit_constants(individual, iter,x, y):
     for _ in range(iter):
         child, success = mutation_w_sa(individual, x.shape[1],x,y, ONLY_CONSTANT=True)
         if success:
-            individual = child
-    
+            child.T = individual.T
+            child.age = individual.age//2
+            individual = child                
     return individual
 
 def simplify_constant_population(population):
@@ -344,16 +349,22 @@ def simplify_constant_population(population):
         simplify_constant(gen)
                
 def simplify_constant(gen):
-    if gen.left:
-        simplify_constant(gen.left)
-    if gen.right:
-        simplify_constant(gen.right)
+    try:
+        if gen.left:
+            simplify_constant(gen.left)
+        if gen.right:
+            simplify_constant(gen.right)
 
-    if gen.right!=None:
-        if isinstance(gen.left.value, np.ndarray) and isinstance(gen.right.value, np.ndarray):
-            gen.value=gen.evaluate()
-            gen.right=None
-            gen.left=None
+        if gen.right!=None:
+            if isinstance(gen.left.value, np.ndarray) and isinstance(gen.right.value, np.ndarray):
+                gen.value=gen.evaluate()
+                gen.right=None
+                gen.left=None
+    except:
+        print("gen: ", gen)
+        print("gen.left: ", gen.left)
+        print("gen.right: ", gen.right)
+        print("gen.feature_index: ", gen.feature_index )
 
 def simplify_operation_population(population):
     for i in range(len(population)):
@@ -375,3 +386,5 @@ def simplify_operation(gen):
         if isinstance(gen.left.value, np.ndarray):
             gen.value=gen.evaluate()
             gen.left=None
+        elif gen.left.value==np.abs and gen.value==np.abs:
+            gen.left = gen.left.left
