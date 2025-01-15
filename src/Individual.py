@@ -6,5 +6,6 @@ from src.node import Node
 class Individual:
     genome: Node
     fitness: float=None
+    fitness_val: float=None
     age: int=0
     T: float=1

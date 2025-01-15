@@ -30,6 +30,7 @@ def tournament_selection(population, n, k, ELITISM=False, elite_count=3):
     Returns:
     - list of Individual: The selected individuals.
     """
+    # TODO update might be required for elitism option because of new configuration of fitness
     # Ensure all individuals have their fitness calculated
     if any(ind.fitness is None for ind in population):
         raise ValueError("All individuals must have a fitness value assigned before tournament selection.")
@@ -213,7 +214,7 @@ def cost(genome,x,y):
     mse = np.mean((predictions - y) ** 2)
     return mse
 
-def assign_population_fitness(population, x, y):
+def assign_population_fitness_train(population, x, y):
     """
     Calculate and assign fitness values to the population.
     
@@ -231,6 +232,31 @@ def assign_population_fitness(population, x, y):
                 ind_cost = cost(individual.genome, x, y)
                 if len(w) == 0:
                     individual.fitness = ind_cost
+                else:
+                    removed_indices.append(i)
+                    
+    # Remove invalid individuals
+    for idx in sorted(removed_indices, reverse=True):
+        del population[idx]
+        
+def assign_population_fitness_val(population, x, y):
+    """
+    Calculate and assign fitness values to the population.
+    
+    Parameters:
+    - population (list of Individual): The population of individuals.
+    - x (np.ndarray): Input data.
+    - y (np.ndarray): Target data.
+    """
+    removed_indices = []
+    for i, individual in enumerate(population):
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+
+            if individual.fitness_val is None:
+                ind_cost = cost(individual.genome, x, y)
+                if len(w) == 0:
+                    individual.fitness_val = ind_cost
                 else:
                     removed_indices.append(i)
                     
@@ -270,7 +296,7 @@ def kill_constant(population):
 
 
 def top_n_individuals(population, n):
-    return sorted(population, key=lambda x: x.fitness)[:n]
+    return sorted(population, key=lambda x: x.fitness_val)[:n]
 
 def calculate_mean_fitness(population):
     return np.mean([ind.fitness for ind in population])
