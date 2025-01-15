@@ -111,6 +111,8 @@ def mutation(individual, feature_count, ONLY_CONSTANT=False): # TODO: p values s
                 if random.random() < 0.5: # Replace the operator with a constant or feature
                     if random.random() < 0.5: # Replace the operator with a constant
                         target_node.value = np.random.normal(0,1,1)
+                        target_node.left = None
+                        target_node.right = None
                     else: # Replace the operator with a feature
                         target_node.value = None
                         target_node.left = None
