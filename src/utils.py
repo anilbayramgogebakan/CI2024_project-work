@@ -276,20 +276,32 @@ def calculate_mean_fitness(population):
 def calculate_mean_complexity(population):
     return np.mean([ind.genome.complexity for ind in population])
 
-def deduplicate_population(population): 
+def deduplicate_population(population):
     """
-    Remove duplicate individuals from the population. With probability p, a duplicate individual is kept.
+    Remove duplicate individuals from the population based on fitness and age.
+    For duplicate fitness values, keep the individual with the minimum age.
     
     Parameters:
     - population (list of Individual): The population of individuals.
+    
+    Returns:
+    - deduplicated (list of Individual): The deduplicated population.
     """
-    seen = set()
-    deduplicated = []
+    # Dictionary to track unique fitness values and the individual with the minimum age
+    fitness_to_individual = {}
+
     for ind in population:
-        if ind.fitness not in seen:
-            deduplicated.append(ind)
-            seen.add(ind.fitness)
-    return deduplicated
+        if ind.fitness not in fitness_to_individual:
+            # Add if the fitness value is not already seen
+            fitness_to_individual[ind.fitness] = ind
+        else:
+            # Replace if the current individual has a lower age
+            if ind.age < fitness_to_individual[ind.fitness].age:
+                fitness_to_individual[ind.fitness] = ind
+
+    # Return the deduplicated list of individuals
+    return list(fitness_to_individual.values())
+
 # TODO requires update to use assign_population_fitness
 # def migration(population_1,population_2,num_peop,x,y):
 #     costs_1 = cost_population(population_1,x,y)
@@ -331,7 +343,7 @@ def fit_constants(individual, iter,x, y):
     Args:
         node (Node): The node to fit.
         iter (int): The number of iterations to run the optimization.
-        x (np.ndarray): Input data.
+        x (np+.ndarray): Input data.
         y (np.ndarray): Target data.
     """
 
@@ -372,19 +384,25 @@ def simplify_operation_population(population):
         simplify_operation(gen)
         
 def simplify_operation(gen):
-    if gen.left:
-        simplify_operation(gen.left)
-    if gen.right:
-        simplify_operation(gen.right)
+    try: 
+        if gen.left:
+            simplify_operation(gen.left)
+        if gen.right:
+            simplify_operation(gen.right)
 
-    if gen.right!=None:
-        if isinstance(gen.left.value, np.ndarray) and isinstance(gen.right.value, np.ndarray):
-            gen.value=gen.evaluate()
-            gen.right=None
-            gen.left=None
-    elif gen.left!=None:    # unary operator
-        if isinstance(gen.left.value, np.ndarray):
-            gen.value=gen.evaluate()
-            gen.left=None
-        elif gen.left.value==np.abs and gen.value==np.abs:
-            gen.left = gen.left.left
+        if gen.right!=None:
+            if isinstance(gen.left.value, np.ndarray) and isinstance(gen.right.value, np.ndarray):
+                gen.value=gen.evaluate()
+                gen.right=None
+                gen.left=None
+        elif gen.left!=None:    # unary operator
+            if isinstance(gen.left.value, np.ndarray):
+                gen.value=gen.evaluate()
+                gen.left=None
+            elif gen.left.value==np.abs and gen.value==np.abs:
+                gen.left = gen.left.left
+    except:
+        print("gen: ", gen)
+        print("gen.left: ", gen.left)
+        print("gen.right: ", gen.right)
+        print("gen.feature_index: ", gen.feature_index )
