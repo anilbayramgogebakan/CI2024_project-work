@@ -18,6 +18,14 @@ def import_prova():
     print("Pass")
 
 
+def split_dataset(x,y,split_ratio=0.8):
+    train_len = int(x.shape[1]*split_ratio)
+    train_x = x[:,:train_len]
+    val_x = x[:,train_len:]
+    train_y = y[:train_len]
+    val_y = y[train_len:]
+    return train_x, train_y, val_x, val_y
+
 def tournament_selection(population, n, k, ELITISM=False, elite_count=3):
     """
     Perform tournament selection on a population of individuals.
@@ -46,7 +54,7 @@ def tournament_selection(population, n, k, ELITISM=False, elite_count=3):
         selected_indices = np.random.choice(indices, n, replace=False)
         
         # Find the index of the individual with the best (lowest) fitness in the selected group
-        best_idx = selected_indices[np.argmin([population[i].fitness*(population[i].genome.complexity*0.1 +1)for i in selected_indices])]
+        best_idx = selected_indices[np.argmin([population[i].fitness*(population[i].genome.complexity*0 +1)for i in selected_indices])]
 
         # Remove all other indices except the winner of the tournament
         for idx in sorted(selected_indices, reverse=True):
@@ -97,7 +105,7 @@ def mutation(individual, feature_count, ONLY_CONSTANT=False): # TODO: p values s
 
     # Modify the target node
     if target_node.feature_index is not None and ONLY_CONSTANT==False: # Node is Xn
-        if random.random() < 0.5:
+        if random.random() < 0.5 and feature_count>1:
         # Modify the feature index
             target_node.feature_index = np.random.choice([i for i in range(feature_count) if i != target_node.feature_index])
             # target_node.feature_index = random.randint(0, feature_count - 1) #TODO: find a better way to exclude existing feature index
@@ -132,6 +140,7 @@ def mutation(individual, feature_count, ONLY_CONSTANT=False): # TODO: p values s
                 # Replace the constant value with a feature
                 target_node.value = None
                 target_node.feature_index = random.randint(0, feature_count - 1)
+    child.genome.update_complexity()
     return child
 
 
@@ -172,7 +181,11 @@ def crossover(parent1, parent2):
     target_node1.feature_index, target_node2.feature_index = target_node2.feature_index, target_node1.feature_index
     target_node1.left, target_node2.left = target_node2.left, target_node1.left
     target_node1.right, target_node2.right = target_node2.right, target_node1.right
-
+    
+    child1.genome.update_complexity()
+    child2.genome.update_complexity()
+    parent1.genome.update_complexity()
+    parent2.genome.update_complexity()
     return child1, child2
 
 
@@ -304,8 +317,34 @@ def kill_complex(population, max_complexity):
     """
     population[:] = [ind for ind in population if ind.genome.complexity <= max_complexity]
 
+# def top_n_individuals(population, n):
+#     return sorted(population, key=lambda x: x.fitness_val)[:n]
+
 def top_n_individuals(population, n):
-    return sorted(population, key=lambda x: x.fitness_val)[:n]
+    """
+    Select the top n unique individuals from the population based on fitness value.
+
+    Parameters:
+    - population (list of Individual): The population of individuals.
+    - n (int): The number of unique top individuals to return.
+
+    Returns:
+    - list of Individual: The top n unique individuals based on fitness.
+    """
+    # Use a dictionary to keep the first occurrence of each unique fitness value
+    unique_best_individuals = []
+    best_inv_fitness_val = []
+
+    for ind in sorted(population, key=lambda x: x.fitness_val):
+        if ind.fitness_val not in best_inv_fitness_val:
+            unique_best_individuals.append(ind)
+            best_inv_fitness_val.append(ind.fitness_val)
+        if len(unique_best_individuals) == n:
+            break
+
+    # Return the top n unique individuals
+    return unique_best_individuals
+
 
 def calculate_mean_fitness(population):
     return np.mean([ind.fitness for ind in population])
@@ -397,6 +436,7 @@ def simplify_constant_population(population):
     for i in range(len(population)):
         gen = population[i].genome
         simplify_constant(gen)
+        gen.update_complexity()
                
 def simplify_constant(gen):
     try:
@@ -420,6 +460,7 @@ def simplify_operation_population(population):
     for i in range(len(population)):
         gen = population[i].genome
         simplify_operation(gen)
+        gen.update_complexity()
         
 def simplify_operation(gen):
     try: 

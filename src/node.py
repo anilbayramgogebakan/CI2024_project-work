@@ -45,7 +45,7 @@ class Node:
     @value.setter
     def value(self, new_value):
         self._value = new_value
-        #self.update_complexity()
+        self.update_complexity()
 
     @property
     def left(self):
@@ -54,7 +54,7 @@ class Node:
     @left.setter
     def left(self, new_left):
         self._left = new_left
-        #self.update_complexity()
+        self.update_complexity()
 
     @property
     def right(self):
@@ -63,7 +63,7 @@ class Node:
     @right.setter
     def right(self, new_right):
         self._right = new_right
-        #self.update_complexity()
+        self.update_complexity()
 
     @property
     def complexity(self):
