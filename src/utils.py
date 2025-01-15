@@ -109,8 +109,8 @@ def mutation(individual, feature_count, ONLY_CONSTANT=False): # TODO: p values s
     # Modify the operator or constant
         if target_node.value in operators: # If the node is an operator
             if ONLY_CONSTANT==False:
-                if random.random() < 0.5: # Replace the operator with a constant or feature
-                    if random.random() < 0.5: # Replace the operator with a constant
+                if random.random() < 0.6: # Replace the operator with a constant or feature
+                    if random.random() < 0.8: # Replace the operator with a constant
                         target_node.value = np.random.normal(0,1,1)
                         target_node.left = None
                         target_node.right = None
@@ -125,7 +125,7 @@ def mutation(individual, feature_count, ONLY_CONSTANT=False): # TODO: p values s
                     else: # If the operator is two-argument, pick another two-argument operator
                         target_node.value = np.random.choice([op for op in set(operators)-set(unary_operators) if op != target_node.value])
         else: # If the node is a constant, assign a new constant value
-            if random.random() < 0.5 or ONLY_CONSTANT==True:
+            if random.random() < 0.8 or ONLY_CONSTANT==True:
                 # Replace the constant value with constant value
                 target_node.value = np.random.normal(0,1,1)
             else:
@@ -294,6 +294,15 @@ def kill_constant(population):
     
     population[:] = [ind for ind in population if not (ind.genome.complexity==1 and ind.genome.feature_index==None)]
 
+def kill_complex(population, max_complexity):
+    """
+    Remove the complex individuals from the population.
+    
+    Parameters:
+    - population (list of Individual): The population of individuals.
+    - max_complexity (int): The maximum complexity an individual can reach before being removed.
+    """
+    population[:] = [ind for ind in population if ind.genome.complexity <= max_complexity]
 
 def top_n_individuals(population, n):
     return sorted(population, key=lambda x: x.fitness_val)[:n]
@@ -376,11 +385,12 @@ def fit_constants(individual, iter,x, y):
     """
 
     for _ in range(iter):
-        child, success = mutation_w_sa(individual, x.shape[1],x,y, ONLY_CONSTANT=True)
-        if success:
-            child.T = individual.T
-            child.age = individual.age//2
-            individual = child                
+        if individual.genome.complexity != 1:
+            child, success = mutation_w_sa(individual, x.shape[1],x,y, ONLY_CONSTANT=True)
+            if success:
+                child.T = individual.T
+                child.age = individual.age//2
+                individual = child                
     return individual
 
 def simplify_constant_population(population):
