@@ -140,6 +140,22 @@ class Node:
 
 
 # Simplification functions
+def parse_inner_expression(expr_str):
+    """Helper function to parse inner expressions without using eval()"""
+    if expr_str.startswith('x[') and expr_str.endswith(']'):
+        # Handle variable terms like x[1]
+        feature_index = int(expr_str[2:-1])
+        return Node(feature_index=feature_index)
+    elif expr_str.startswith('(') and expr_str.endswith(')'):
+        # Handle composite expressions like (2 * x[1])
+        inner = expr_str[1:-1].split(' * ')
+        if len(inner) == 2:
+            coefficient = float(inner[0])
+            var_node = Node(feature_index=int(inner[1][2:-1]))
+            return Node(value=np.multiply, left=Node(value=coefficient), right=var_node)
+    # Add more parsing cases as needed
+    return None
+
 def collect_terms_with_multiplication_division(node, terms=None, coefficient=1):
     if terms is None:
         terms = {}
@@ -156,6 +172,17 @@ def collect_terms_with_multiplication_division(node, terms=None, coefficient=1):
     # If the node represents a constant
     if node.value is not None and not isinstance(node.value, np.ufunc):
         terms["constant"] = terms.get("constant", 0) + coefficient * node.value
+        return terms
+
+    # Handle unary operations
+    if node.value in Node.unary_operators:
+        # First simplify the inner expression
+        inner_terms = collect_terms_with_multiplication_division(node.left, {}, 1)
+        inner_node = rebuild_tree_with_multiplication_division(inner_terms)
+        if inner_node:
+            # Create a new key for the simplified unary operation
+            key = f"{Node.op_list[node.value]}({inner_node})"
+            terms[key] = terms.get(key, 0) + coefficient
         return terms
 
     # Handle addition and subtraction
@@ -185,64 +212,98 @@ def collect_terms_with_multiplication_division(node, terms=None, coefficient=1):
     # Handle division
     elif node.value == np.divide:
         if node.left and node.right:
-            # Simplify if denominator is a constant
+            # Case 1: division by a constant
             if node.right.value is not None and not node.right.is_operator(node.right.value) and node.right.value != 0:
                 new_coefficient = coefficient / node.right.value
                 collect_terms_with_multiplication_division(node.left, terms, new_coefficient)
-            elif node.right.feature_index is not None:
-                # Simplify division if numerator contains the denominator
-                if node.left.value == np.multiply and (
-                    node.left.left.feature_index == node.right.feature_index
-                    or node.left.right.feature_index == node.right.feature_index
-                ):
-                    other_term = (
-                        node.left.right
-                        if node.left.left.feature_index == node.right.feature_index
-                        else node.left.left
-                    )
-                    collect_terms_with_multiplication_division(other_term, terms, coefficient)
+            
+            # Case 2: cancellation of variables (e.g., (x[1] * x[2]) / x[1] -> x[2])
+            elif node.left.value == np.multiply and node.right.feature_index is not None:
+                left_mult = node.left
+                denominator_index = node.right.feature_index
+                
+                # Check if either the left or right part of multiplication matches the denominator
+                if left_mult.left.feature_index == denominator_index:
+                    # Cancel out the matching term and keep the other term
+                    collect_terms_with_multiplication_division(left_mult.right, terms, coefficient)
+                elif left_mult.right.feature_index == denominator_index:
+                    # Cancel out the matching term and keep the other term
+                    collect_terms_with_multiplication_division(left_mult.left, terms, coefficient)
                 else:
-                    # Cannot simplify further, leave as is
+                    # No cancellation possible
                     key = f"({node.left} / {node.right})"
                     terms[key] = terms.get(key, 0) + coefficient
             else:
-                # Unsupported denominator
-                raise ValueError("Cannot simplify division with unsupported denominator.")
-        else:
-            raise ValueError("Invalid division operation: missing left or right node.")
+                # Cannot simplify further
+                key = f"({node.left} / {node.right})"
+                terms[key] = terms.get(key, 0) + coefficient
 
     return terms
 
-
-
 def rebuild_tree_with_multiplication_division(terms):
-    root = None
+    if not terms:
+        return None
 
+    root = None
+    
     # Handle constant terms
     if 'constant' in terms and terms['constant'] != 0:
         root = Node(value=terms.pop('constant'))
 
-    # Handle feature terms
-    for feature_key, coefficient in sorted(terms.items()):
+    # Handle variable terms (x[i])
+    var_terms = {k: v for k, v in terms.items() if k.startswith('x[')}
+    for var_key, coefficient in sorted(var_terms.items()):
         if coefficient == 0:
             continue
-
-        if coefficient == 1:  # Coefficient of 1, no need to multiply
-            term_node = Node(feature_index=int(feature_key[2:-1]))
+        
+        feature_index = int(var_key[2:-1])
+        if coefficient == 1:
+            term_node = Node(feature_index=feature_index)
         else:
             term_node = Node(
                 value=np.multiply,
                 left=Node(value=coefficient),
-                right=Node(feature_index=int(feature_key[2:-1])),
+                right=Node(feature_index=feature_index)
             )
-        
+            
         if root is None:
             root = term_node
         else:
             root = Node(value=np.add, left=root, right=term_node)
 
-    return root
+    # Handle unary operation terms
+    unary_terms = {k: v for k, v in terms.items() if any(op in k for op in ['sin', 'cos', 'exp', 'log', 'tan', 'abs'])}
+    for unary_key, coefficient in unary_terms.items():
+        if coefficient == 0:
+            continue
 
+        # Extract the operator and inner expression
+        op_name = unary_key[:unary_key.find('(')]
+        inner_expr = unary_key[unary_key.find('(')+1:-1]
+        
+        # Find the corresponding numpy operator
+        op_func = next(op for op, symbol in Node.op_list.items() if symbol == op_name)
+        
+        # Parse the inner expression using our custom parser
+        inner_node = parse_inner_expression(inner_expr)
+        if inner_node:
+            unary_node = Node(value=op_func, left=inner_node)
+            
+            if coefficient != 1:
+                term_node = Node(
+                    value=np.multiply,
+                    left=Node(value=coefficient),
+                    right=unary_node
+                )
+            else:
+                term_node = unary_node
+                
+            if root is None:
+                root = term_node
+            else:
+                root = Node(value=np.add, left=root, right=term_node)
+
+    return root
 
 def simplify_tree_with_multiplication_and_division(node):
     try:
@@ -252,61 +313,4 @@ def simplify_tree_with_multiplication_and_division(node):
         return simplified_tree
     except ValueError as e:
         print(f"Error during simplification: {e}")
-        return node
-    
-# Arithmetic Simplification (unchanged)
-def simplify_tree_with_multiplication_and_division(node):
-    try:
-        terms = collect_terms_with_multiplication_division(node)
-        simplified_tree = rebuild_tree_with_multiplication_division(terms)
-        return simplified_tree
-    except ValueError as e:
-        print(f"Error during simplification: {e}")
-        return node
-
-# Simplify Unary Operations
-def simplify_unary_operations(node):
-    if node is None:
-        return None
-
-    if node.feature_index is not None:
-        print(f"Preserving feature_index node: {node}")
-        return Node(feature_index=node.feature_index)
-
-    simplified_left = simplify_unary_operations(node.left)
-    simplified_right = simplify_unary_operations(node.right)
-
-    if node.value in Node.unary_operators:
-        print(f"Attempting to simplify unary operator: {node.value} with operand: {simplified_left}")
-        if simplified_left and simplified_left.value is not None and not simplified_left.is_operator(simplified_left.value):
-            try:
-                evaluated_value = node.value(simplified_left.value)
-                print(f"Unary operator {node.value} evaluated to {evaluated_value}")
-                return Node(value=evaluated_value)
-            except Exception as e:
-                print(f"Error simplifying unary operation: {e}")
-        return Node(value=node.value, left=simplified_left)
-
-    return Node(value=node.value, left=simplified_left, right=simplified_right)
-
-
-
-# Combined Simplification
-def simplify_tree(node):
-    try:
-        print("Starting arithmetic simplification...")
-        simplified_arithmetic = simplify_tree_with_multiplication_and_division(node)
-        print(f"Arithmetic Simplified Tree: {simplified_arithmetic}")
-
-        if simplified_arithmetic is None:
-            return None
-
-        print("Starting unary simplification...")
-        fully_simplified_tree = simplify_unary_operations(simplified_arithmetic)
-        print(f"Fully Simplified Tree: {fully_simplified_tree}")
-
-        return fully_simplified_tree
-    except ValueError as e:
-        print(f"Error during simplification: {e}")
-        return node
-
+        return node  # Return original node if simplification fails
