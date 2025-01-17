@@ -190,17 +190,18 @@ def crossover(parent1, parent2):
 
 
 
-def random_tree(depth, num_features):
+def random_tree(depth, num_features, init_unary=unary_operators, init_binary=binary_operators):
     if depth == 0:
         if random.random() < 0.5:
             return Node(feature_index=random.randint(0, num_features - 1))
         else:
             return Node(value=np.random.normal(0,1,1))
 
+    operators = init_binary + init_unary
     operator = random.choice(operators)
     node = Node(value=operator)
 
-    if operator in unary_operators:
+    if operator in init_unary:
         node.left = random_tree(depth - 1, num_features)
         node.right = None
     else:
@@ -209,15 +210,15 @@ def random_tree(depth, num_features):
 
     return node
 
-def create_population(num_peop,depth,num_features):
+def create_population(num_peop,depth,num_features,init_unary=unary_operators, init_binary=binary_operators):
     population = []
     num_ones = num_peop//2
     for i in range(num_ones):
-        baby_node=random_tree(1,num_features)
+        baby_node=random_tree(1, num_features, init_unary, init_binary)
         baby = Individual(genome=baby_node)
         population.append(baby)
     for i in range(num_peop-num_ones):
-        baby_node=random_tree(depth,num_features)
+        baby_node=random_tree(depth, num_features, init_unary, init_binary)
         baby = Individual(genome=baby_node)
         population.append(baby)
     return population
