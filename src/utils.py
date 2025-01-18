@@ -36,7 +36,7 @@ def tournament_selection(population, n, k, ELITISM=False, elite_count=3):
     - k (int): Number of winners to select.
 
     Returns:
-    - list of Individual: The selected individuals.
+    - list of indexes: The indexes of selected individuals.
     """
     # TODO update might be required for elitism option because of new configuration of fitness
     # Ensure all individuals have their fitness calculated
@@ -202,11 +202,11 @@ def random_tree(depth, num_features, init_unary=unary_operators, init_binary=bin
     node = Node(value=operator)
 
     if operator in init_unary:
-        node.left = random_tree(depth - 1, num_features)
+        node.left = random_tree(depth - 1, num_features, init_unary, init_binary)
         node.right = None
     else:
-        node.left = random_tree(depth - 1, num_features)
-        node.right = random_tree(depth - 1, num_features)
+        node.left = random_tree(depth - 1, num_features, init_unary, init_binary)
+        node.right = random_tree(depth - 1, num_features, init_unary, init_binary)
 
     return node
 
@@ -380,18 +380,20 @@ def deduplicate_population(population):
     return list(fitness_to_individual.values())
 
 # TODO requires update to use assign_population_fitness
-# def migration(population_1,population_2,num_peop,x,y):
-#     costs_1 = cost_population(population_1,x,y)
-#     costs_2 = cost_population(population_2,x,y)
-#     best_1, worst_1 = tournament_selection(costs_1,num_peop)
-#     best_2, worst_2 = tournament_selection(costs_2,num_peop)
-#     elements_1 = [population_1[i] for i in best_1]
-#     elements_2 = [population_2[i] for i in best_2]
-#     for i, idx in enumerate(best_1):
-#         population_1[idx] = elements_2[i]
-#     for i, idx in enumerate(best_2):
-#         population_2[idx] = elements_1[i]
-#     return population_1,population_2
+def migration(population_1,population_2,num_peop=20):
+    best_1_ind = tournament_selection(population_1,3,num_peop,ELITISM=False, elite_count=None)
+    best_2_ind = tournament_selection(population_2,3,num_peop,ELITISM=False, elite_count=None)
+
+    elites_1 = [population_1[idx] for idx in best_1_ind]
+    elites_2 = [population_2[idx] for idx in best_2_ind]
+
+    population_1 = [normal for normal in population_1 if normal not in elites_1]
+    population_2 = [normal for normal in population_2 if normal not in elites_2]
+
+    new_pop_1 = elites_2 + population_1
+    new_pop_2 = elites_1 + population_2
+
+    return new_pop_1, new_pop_2
 
 def mutation_w_sa(individual, feature_count,x,y, ONLY_CONSTANT=False, alpha=0.95):
     child = mutation(individual, feature_count, ONLY_CONSTANT)
