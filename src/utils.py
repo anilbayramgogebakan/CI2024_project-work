@@ -3,8 +3,8 @@ import random
 import copy
 import warnings
 from tqdm import tqdm
-from src.node import Node
-from src.Individual import Individual
+from node import Node
+from Individual import Individual
 
 unary_operators=[np.sin, np.cos, np.exp, np.abs, np.log, np.tan]
 binary_operators=[np.add, np.subtract, np.multiply, np.divide]

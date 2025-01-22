@@ -1,6 +1,6 @@
 import numpy as np
 from dataclasses import dataclass
-from src.node import Node
+from node import Node
 
 @dataclass
 class Individual:
