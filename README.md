@@ -1,12 +1,12 @@
 # Symbolic Regression
 
 ## Collobarators
-Anil Bayram Gogebakan | s328470
-[Oguzhan Akgun | s328919](https://github.com/oguzhaaan)
-[Meric Ulucay | s328899](https://github.com/mericuluca/CI2024_project-work)
+Anil Bayram Gogebakan | s328470 <br>
+[Oguzhan Akgun | s328919](https://github.com/oguzhaaan) <br>
+[Meric Ulucay | s328899](https://github.com/mericuluca/CI2024_project-work) <br>
 
 ## Methodology
-In this project, we implemented a symbolic regression algorithm. Our aim is to solve given dataset with the lowest MSE score. For this purpose, we use concepts that we learned in the class. In addition to that, we try to get some ideas from [“Interpretable Machine Learning for Science with PySR and SymbolicRegression.jl”](https://arxiv.org/abs/2305.01582)  paper by Miles Cramer: . In this paper, symbolic regression algorithm is implemented as well. Specifically, tournament selection algorithm (with some modification), aging algorithm (killing the oldest individuals in the population)  and migration algorithm are the ones that we add to algorithms in addition to ones we learned in the class. Moreover, the paper gives a general idea about how we should organize our framework in general with some pseudo codes.
+In this project, we implemented a symbolic regression algorithm. Our aim is to solve given dataset with the lowest MSE score. For this purpose, we use concepts that we learned in the class. In addition to that, we try to get some ideas from [“Interpretable Machine Learning for Science with PySR and SymbolicRegression.jl”](https://arxiv.org/abs/2305.01582)  paper by Miles Cramer. In this paper, symbolic regression algorithm is implemented as well. Specifically, tournament selection algorithm (with some modification), aging algorithm (killing the oldest individuals in the population)  and migration algorithm are the ones that we add to algorithms in addition to ones we learned in the class. Moreover, the paper gives a general idea about how we should organize our framework in general with some pseudo codes.
 Firstly, we create a dataclass whose name is “Individual”. This dataclass represents an individual from a population. Thus, it has 5 features: Genome, fitness, fitness_val, age, and T value. Fitness and fitness_val are the MSE losses of individuals for train and validation splits respectively. Age and T values are for killing algorithm and simulated annealing algorithm respectively. Type of genome feature is “node” object which is also created by us. It is the tree-like representation of the mathematical formulas as implemented in genetic programming.
 We create populations randomly where half of the population has lowest complexity, and the other half have the maximum complexity in given range by parameters. In every generation following algorithms applied in the given order after both fitness and fitness_val values assigned initially. Remember that every fitness value calculation, if there is a overflow (such as 0 in the denominator during divide operation), that individual is removed.
 
@@ -56,5 +56,5 @@ I contributed this projecy by implementing following modules:
 *   Deduplication population
 *   Killing complex nodes
 *   Migration
-*   Constant optimization
+*   Constant optimization <br>
 Also, I create the life cycle where we put all this methods in a order.
