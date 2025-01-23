@@ -45,7 +45,7 @@ After genomes become complex, we started to face situations where nodes can be s
 By using these ideas and methodologies, we obtain good results in most of the given dataset. However, Dataset 2 and Dataset 8 were very challenging. Thus, we couldn’t able to generate good results for these tasks.
 
 ## Personal Contribution
-I contributed this projecy by implementing following modules:
+I contributed this project by implementing following modules:
 *   Individual
 *   Crossover
 *   Mutation
@@ -57,4 +57,4 @@ I contributed this projecy by implementing following modules:
 *   Killing complex nodes
 *   Migration
 *   Constant optimization <br>
-Also, I create the life cycle where we put all this methods in a order.
+Also, I created the life cycle where we put all these methods in order.
